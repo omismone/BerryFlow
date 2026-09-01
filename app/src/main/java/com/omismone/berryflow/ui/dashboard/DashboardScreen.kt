@@ -7,28 +7,35 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
 import com.omismone.berryflow.data.Transaction
+import com.omismone.berryflow.ui.theme.TopBarButtonPadding
+import com.omismone.berryflow.ui.theme.clickableNoRipple
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
-import com.omismone.berryflow.ui.theme.clickableNoRipple
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 
 // Colors used for negative/positive daily balances
 private val NegativeColor = Color(0xFFE53935)
@@ -40,9 +47,13 @@ fun DashboardScreen(
     balance: Double,
     categories: List<Category>,
     transactions: List<Transaction>,
-    onMenuClick: () -> Unit,
     onAddClick: () -> Unit,
-    onTransactionClick: (Transaction) -> Unit
+    onTransactionClick: (Transaction) -> Unit,
+    onInsightsClick: () -> Unit,
+    onRecurrentEventsClick: () -> Unit,
+    onCategoriesClick: () -> Unit,
+    onAdjustBalanceClick: () -> Unit,
+    onManageDataClick: () -> Unit
 ) {
     val categoriesById = categories.associateBy { it.id }
 
@@ -64,8 +75,12 @@ fun DashboardScreen(
         item {
             DashboardTopBar(
                 balance = balance,
-                onMenuClick = onMenuClick,
-                onAddClick = onAddClick
+                onAddClick = onAddClick,
+                onInsightsClick = onInsightsClick,
+                onRecurrentEventsClick = onRecurrentEventsClick,
+                onCategoriesClick = onCategoriesClick,
+                onAdjustBalanceClick = onAdjustBalanceClick,
+                onManageDataClick = onManageDataClick
             )
         }
 
@@ -76,8 +91,10 @@ fun DashboardScreen(
                     transactions = dayTransactions
                 )
             }
+
             items(dayTransactions) { transaction ->
                 val category = categoriesById[transaction.categoryId]
+
                 if (category != null) {
                     TransactionRow(
                         transaction = transaction,
@@ -93,9 +110,15 @@ fun DashboardScreen(
 @Composable
 private fun DashboardTopBar(
     balance: Double,
-    onMenuClick: () -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onInsightsClick: () -> Unit,
+    onRecurrentEventsClick: () -> Unit,
+    onCategoriesClick: () -> Unit,
+    onAdjustBalanceClick: () -> Unit,
+    onManageDataClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,19 +127,80 @@ private fun DashboardTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = TopBarButtonPadding),
+                .padding(
+                    start = 12.dp,
+                    end = 12.dp,
+                    top = TopBarButtonPadding
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onMenuClick) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
+            Box {
+                IconButton(
+                    onClick = { showMenu = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = SecondaryTextColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("insights", fontSize = 16.sp) },
+                        leadingIcon = { Text("📊") },
+                        onClick = {
+                            showMenu = false
+                            onInsightsClick()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("recurrent events", fontSize = 16.sp) },
+                        leadingIcon = { Text("🔁") },
+                        onClick = {
+                            showMenu = false
+                            onRecurrentEventsClick()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("categories", fontSize = 16.sp) },
+                        leadingIcon = { Text("🏷️") },
+                        onClick = {
+                            showMenu = false
+                            onCategoriesClick()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("adjust balance", fontSize = 16.sp) },
+                        leadingIcon = { Text("💰") },
+                        onClick = {
+                            showMenu = false
+                            onAdjustBalanceClick()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("manage data", fontSize = 16.sp) },
+                        leadingIcon = { Text("📁") },
+                        onClick = {
+                            showMenu = false
+                            onManageDataClick()
+                        }
+                    )
+                }
             }
-            IconButton(onClick = onAddClick) {
+
+            IconButton(
+                onClick = onAddClick
+            ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add",
@@ -140,9 +224,16 @@ private fun DashboardTopBar(
         )
     }
 }
+
 @Composable
-private fun DayHeader(date: LocalDate, transactions: List<Transaction>) {
-    val netBalance = transactions.sumOf { if (it.isIncome) it.amount else -it.amount }
+private fun DayHeader(
+    date: LocalDate,
+    transactions: List<Transaction>
+) {
+    val netBalance = transactions.sumOf {
+        if (it.isIncome) it.amount else -it.amount
+    }
+
     val (balanceText, balanceColor) = formatDailyBalance(netBalance)
 
     Column(
@@ -159,19 +250,26 @@ private fun DayHeader(date: LocalDate, transactions: List<Transaction>) {
                 color = SecondaryTextColor,
                 fontSize = 16.sp
             )
+
             Text(
                 text = balanceText,
                 color = balanceColor,
                 fontSize = 16.sp
             )
         }
+
         Spacer(modifier = Modifier.height(6.dp))
-        HorizontalDividerLine(modifier = Modifier.fillMaxWidth())
+
+        HorizontalDividerLine(
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
 @Composable
-private fun HorizontalDividerLine(modifier: Modifier = Modifier) {
+private fun HorizontalDividerLine(
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .height(1.dp)
@@ -201,12 +299,19 @@ private fun TransactionRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(category.color).copy(alpha = 0.25f)),
+                    .background(
+                        Color(category.color).copy(alpha = 0.25f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = category.emoji, fontSize = 21.sp)
+                Text(
+                    text = category.emoji,
+                    fontSize = 21.sp
+                )
             }
+
             Spacer(modifier = Modifier.width(12.dp))
+
             Text(
                 text = category.name.lowercase(),
                 color = Color.Black,
@@ -215,7 +320,10 @@ private fun TransactionRow(
         }
 
         Text(
-            text = formatSignedAmount(transaction.amount, transaction.isIncome),
+            text = formatSignedAmount(
+                transaction.amount,
+                transaction.isIncome
+            ),
             color = Color.Black,
             fontSize = 17.sp
         )
@@ -228,32 +336,55 @@ private fun formatPlainAmount(amount: Double): String {
     return String.format(Locale.US, "%.2f", amount)
 }
 
-private fun formatSignedAmount(amount: Double, isIncome: Boolean): String {
+private fun formatSignedAmount(
+    amount: Double,
+    isIncome: Boolean
+): String {
     val sign = if (isIncome) "+" else "-"
     return "$sign ${formatPlainAmount(amount)} €"
 }
 
-private fun formatDailyBalance(netAmount: Double): Pair<String, Color> {
+private fun formatDailyBalance(
+    netAmount: Double
+): Pair<String, Color> {
     val sign = if (netAmount >= 0) "+" else "-"
     val text = "$sign ${formatPlainAmount(kotlin.math.abs(netAmount))} €"
-    val color = if (netAmount >= 0) PositiveColor else NegativeColor
+    val color = if (netAmount >= 0) {
+        PositiveColor
+    } else {
+        NegativeColor
+    }
+
     return text to color
 }
 
 private fun formatDayLabel(date: LocalDate): String {
     val today = LocalDate.now()
+
     return when (date) {
         today -> "Today, ${date.dayOfMonth} ${date.monthAbbreviation()}"
-        today.minusDays(1) -> "Yesterday, ${date.dayOfMonth} ${date.monthAbbreviation()}"
-        else -> "${date.dayOfWeekAbbreviation()}, ${date.dayOfMonth} ${date.monthAbbreviation()}"
+
+        today.minusDays(1) ->
+            "Yesterday, ${date.dayOfMonth} ${date.monthAbbreviation()}"
+
+        else ->
+            "${date.dayOfWeekAbbreviation()}, ${date.dayOfMonth} ${date.monthAbbreviation()}"
     }
 }
 
 private fun LocalDate.monthAbbreviation(): String =
-    month.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH)
+    month.getDisplayName(
+        JavaTextStyle.SHORT,
+        Locale.ENGLISH
+    )
 
 private fun LocalDate.dayOfWeekAbbreviation(): String =
-    dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.ENGLISH)
+    dayOfWeek.getDisplayName(
+        JavaTextStyle.SHORT,
+        Locale.ENGLISH
+    )
 
 private fun Transaction.toLocalDate(): LocalDate =
-    Instant.ofEpochMilli(date).atZone(ZoneId.systemDefault()).toLocalDate()
+    Instant.ofEpochMilli(date)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()

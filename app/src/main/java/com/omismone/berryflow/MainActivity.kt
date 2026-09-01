@@ -17,27 +17,32 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+            setContent {
+                MaterialTheme(typography = Typography) {
+                    DashboardScreen(
+                        balance = fakeBalance,
+                        categories = fakeCategories,
+                        transactions = fakeTransactions,
+                        onAddClick = {},
+                        onTransactionClick = {},
+                        onInsightsClick = {},
+                        onRecurrentEventsClick = {},
+                        onCategoriesClick = {},
+                        onAdjustBalanceClick = {},
+                        onManageDataClick = {}
+                    )
+                }
+            }
+
 //        setContent {
 //            MaterialTheme(typography = Typography) {
-//                DashboardScreen(
-//                    balance = fakeBalance,
+//                AddScreen(
 //                    categories = fakeCategories,
-//                    transactions = fakeTransactions,
-//                    onMenuClick = {},
-//                    onAddClick = {},
-//                    onTransactionClick = {}
+//                    initialCategory = fakeCategories[1], // "fuel", to match your Figma screenshot
+//                    onBackClick = {}
 //                )
 //            }
 //        }
-        setContent {
-            MaterialTheme(typography = Typography) {
-                AddScreen(
-                    categories = fakeCategories,
-                    initialCategory = fakeCategories[1], // "fuel", to match your Figma screenshot
-                    onBackClick = {}
-                )
-            }
-        }
     }
 }
 
