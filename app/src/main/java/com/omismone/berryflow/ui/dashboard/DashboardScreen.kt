@@ -28,6 +28,7 @@ import java.util.Locale
 import com.omismone.berryflow.ui.theme.clickableNoRipple
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 
 // Colors used for negative/positive daily balances
 private val NegativeColor = Color(0xFFE53935)
@@ -103,7 +104,7 @@ private fun DashboardTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 50.dp),
+                .padding(start = 12.dp, end = 12.dp, top = TopBarButtonPadding),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

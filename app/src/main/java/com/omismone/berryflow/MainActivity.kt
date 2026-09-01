@@ -11,20 +11,30 @@ import com.omismone.berryflow.ui.theme.Typography
 import java.time.LocalDate
 import java.time.ZoneId
 import androidx.core.view.WindowCompat
+import com.omismone.berryflow.ui.add.AddScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+//        setContent {
+//            MaterialTheme(typography = Typography) {
+//                DashboardScreen(
+//                    balance = fakeBalance,
+//                    categories = fakeCategories,
+//                    transactions = fakeTransactions,
+//                    onMenuClick = {},
+//                    onAddClick = {},
+//                    onTransactionClick = {}
+//                )
+//            }
+//        }
         setContent {
             MaterialTheme(typography = Typography) {
-                DashboardScreen(
-                    balance = fakeBalance,
+                AddScreen(
                     categories = fakeCategories,
-                    transactions = fakeTransactions,
-                    onMenuClick = {},
-                    onAddClick = {},
-                    onTransactionClick = {}
+                    initialCategory = fakeCategories[1], // "fuel", to match your Figma screenshot
+                    onBackClick = {}
                 )
             }
         }
