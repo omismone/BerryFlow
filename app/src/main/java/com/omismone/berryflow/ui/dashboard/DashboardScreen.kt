@@ -313,7 +313,7 @@ private fun TransactionRow(
             Spacer(modifier = Modifier.width(12.dp))
 
             Text(
-                text = category.name.lowercase(),
+                text = transaction.name?.takeIf { it.isNotBlank() } ?: category.name.lowercase(),
                 color = Color.Black,
                 fontSize = 17.sp
             )
