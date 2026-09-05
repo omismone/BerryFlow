@@ -1,14 +1,17 @@
 package com.omismone.berryflow.ui.add
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -18,17 +21,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
+import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.text.style.TextAlign
 
 private val SecondaryTextColor = Color(0xFF9E9E9E)
 private val BorderColor = Color(0xFFE0E0E0)
@@ -42,15 +45,28 @@ private val OkKeyBackgroundColor = Color(0xFF424242)
 fun AddScreen(
     categories: List<Category>,
     initialCategory: Category,
-    onBackClick: () -> Unit
+    isEditMode: Boolean = false,
+    initialAmount: Double = 0.0,
+    initialName: String = "",
+    initialIsIncome: Boolean = false,
+    initialDate: LocalDate = LocalDate.now(),
+    onBackClick: () -> Unit,
+    onSaveClick: (amount: Double, name: String, isIncome: Boolean, category: Category, date: LocalDate) -> Unit,
+    onDeleteClick: () -> Unit = {}
 ) {
-    var amountInput by remember { mutableStateOf("") }
-    var transactionName by remember { mutableStateOf("") }
-    var isIncome by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    val context = LocalContext.current
+
+    var amountInput by remember {
+        mutableStateOf(if (initialAmount > 0.0) formatPlainAmount(initialAmount) else "")
+    }
+    var transactionName by remember { mutableStateOf(initialName) }
+    var isIncome by remember { mutableStateOf(initialIsIncome) }
+    var selectedDate by remember { mutableStateOf(initialDate) }
     var selectedCategory by remember { mutableStateOf(initialCategory) }
     var showCategoryMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var hasSubmitted by remember { mutableStateOf(false) }
 
     fun onDigitPress(digit: String) {
         val dotIndex = amountInput.indexOf('.')
@@ -71,6 +87,22 @@ fun AddScreen(
         amountInput = amountInput.dropLast(1)
     }
 
+    fun onOkPress() {
+        if (hasSubmitted) return
+        val amount = parseAmount(amountInput)
+        if (amount <= 0.0) {
+            Toast.makeText(context, "Please enter an amount", Toast.LENGTH_SHORT).show()
+            return
+        }
+        hasSubmitted = true
+        onSaveClick(amount, transactionName, isIncome, selectedCategory, selectedDate)
+        Toast.makeText(
+            context,
+            if (isEditMode) "Transaction updated" else "Transaction saved",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     val displayAmount = amountInput.ifEmpty { "0.00" }
 
     Column(
@@ -81,15 +113,31 @@ fun AddScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = TopBarButtonPadding + 10.dp, start = 32.dp)
+                .padding(top = TopBarButtonPadding + 10.dp, start = 32.dp, end = 32.dp)
         ) {
-            IconButton(onClick = onBackClick) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
                     tint = SecondaryTextColor,
                     modifier = Modifier.size(25.dp)
                 )
+            }
+            if (isEditMode) {
+                IconButton(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete transaction",
+                        tint = SecondaryTextColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
             }
         }
 
@@ -106,14 +154,12 @@ fun AddScreen(
                 fontSize = 28.sp,
                 modifier = Modifier.padding(end = 18.dp)
             )
-
             Text(
                 text = displayAmount,
                 color = Color.Black,
                 fontSize = 50.sp,
                 fontWeight = FontWeight.Bold
             )
-
             IconButton(
                 onClick = { onBackspacePress() },
                 modifier = Modifier.padding(start = 12.dp)
@@ -138,9 +184,7 @@ fun AddScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = null,
@@ -149,7 +193,6 @@ fun AddScreen(
                         .size(18.dp)
                         .align(Alignment.CenterStart)
                 )
-
                 if (transactionName.isEmpty()) {
                     Text(
                         text = selectedCategory.name.lowercase(),
@@ -159,7 +202,6 @@ fun AddScreen(
                         textAlign = TextAlign.Center
                     )
                 }
-
                 BasicTextField(
                     value = transactionName,
                     onValueChange = { transactionName = it },
@@ -195,9 +237,7 @@ fun AddScreen(
                 )
             }
 
-            Box(
-                modifier = Modifier.offset(y = 18.dp)
-            ) {
+            Box(modifier = Modifier.offset(y = 18.dp)) {
                 CategoryButton(
                     category = selectedCategory,
                     onClick = { showCategoryMenu = true }
@@ -225,7 +265,7 @@ fun AddScreen(
         NumericKeypad(
             onDigitPress = { onDigitPress(it) },
             onDotPress = { onDotPress() },
-            onOkPress = { /* behavior not defined yet */ }
+            onOkPress = { onOkPress() }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -260,6 +300,31 @@ fun AddScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete transaction?") },
+            text = { Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (!hasSubmitted) {
+                        hasSubmitted = true
+                        showDeleteConfirm = false
+                        onDeleteClick()
+                        Toast.makeText(context, "Transaction deleted", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -401,6 +466,14 @@ private fun KeypadKey(label: String, modifier: Modifier = Modifier, onClick: () 
     ) {
         Text(text = label, fontSize = 24.sp, color = Color.Black)
     }
+}
+
+private fun formatPlainAmount(amount: Double): String =
+    String.format(Locale.US, "%.2f", amount)
+
+private fun parseAmount(input: String): Double {
+    val cleaned = input.trimEnd('.')
+    return cleaned.toDoubleOrNull() ?: 0.0
 }
 
 private fun formatDateLabel(date: LocalDate): String {
