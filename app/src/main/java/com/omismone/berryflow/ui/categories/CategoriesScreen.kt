@@ -37,28 +37,22 @@ private val NewCategoryDefaultColor = 0xFFBDBDBD.toInt()
 private const val NewCategoryDefaultEmoji = "❓"
 private const val NewCategoryDefaultName = "New Category"
 
-// Fixed palette offered in the color picker. Pastel tones consistent with the
-// rest of the app; final base-category colors will be refined later.
 private val ColorPalette = listOf(
-    0xFFF48FB1.toInt(), // pink
-    0xFFE57373.toInt(), // red
-    0xFFFFB74D.toInt(), // orange
-    0xFF64B5F6.toInt(), // blue
-    0xFF81C784.toInt(), // green
-    0xFFBA68C8.toInt(), // purple
-    0xFF4DB6AC.toInt(), // teal
-    0xFFFFD54F.toInt(), // yellow
-    0xFFA1887F.toInt(), // brown
-    0xFFBDBDBD.toInt()  // gray
+    0xFFF48FB1.toInt(), 0xFFE57373.toInt(), 0xFFFFB74D.toInt(), 0xFF64B5F6.toInt(),
+    0xFF81C784.toInt(), 0xFFBA68C8.toInt(), 0xFF4DB6AC.toInt(), 0xFFFFD54F.toInt(),
+    0xFFA1887F.toInt(), 0xFFBDBDBD.toInt()
 )
 
 @Composable
 fun CategoriesScreen(
-    onHomeClick: () -> Unit
+    categories: List<Category>,
+    onHomeClick: () -> Unit,
+    onAddCategory: (Category) -> Unit,
+    onRenameCategory: (Category, String) -> Unit,
+    onRecolorCategory: (Category, Int) -> Unit,
+    onReemojiCategory: (Category, String) -> Unit,
+    onDeleteCategory: (Category) -> Unit
 ) {
-    var categories by remember { mutableStateOf(fakeCategoriesForTesting()) }
-    var nextId by remember { mutableStateOf(100L) }
-
     var editingNameId by remember { mutableStateOf<Long?>(null) }
     var editingEmojiId by remember { mutableStateOf<Long?>(null) }
     var colorPickerTargetId by remember { mutableStateOf<Long?>(null) }
@@ -66,27 +60,19 @@ fun CategoriesScreen(
     var showDuplicateNewCategoryDialog by remember { mutableStateOf(false) }
     var deleteModeActive by remember { mutableStateOf(false) }
 
-    fun updateCategory(id: Long, transform: (Category) -> Category) {
-        categories = categories.map { if (it.id == id) transform(it) else it }
-    }
-
-    fun addNewCategory() {
+    fun requestAddNewCategory() {
         if (categories.any { it.name == NewCategoryDefaultName }) {
             showDuplicateNewCategoryDialog = true
             return
         }
-        val newCategory = Category(
-            id = nextId,
-            name = NewCategoryDefaultName,
-            color = NewCategoryDefaultColor,
-            emoji = NewCategoryDefaultEmoji
-        )
-        nextId += 1
-        categories = listOf(newCategory) + categories
-    }
 
-    fun deleteCategory(id: Long) {
-        categories = categories.filterNot { it.id == id }
+        onAddCategory(
+            Category(
+                name = NewCategoryDefaultName,
+                color = NewCategoryDefaultColor,
+                emoji = NewCategoryDefaultEmoji
+            )
+        )
     }
 
     Column(
@@ -119,7 +105,8 @@ fun CategoriesScreen(
                         modifier = Modifier.size(23.dp)
                     )
                 }
-                IconButton(onClick = { addNewCategory() }) {
+
+                IconButton(onClick = { requestAddNewCategory() }) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add category",
@@ -140,64 +127,80 @@ fun CategoriesScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            items(categories, key = { it.id }) { category ->
+            items(
+                items = categories.sortedByDescending { it.name == NewCategoryDefaultName },
+                key = { it.id }
+            ) { category ->
                 CategoryRow(
                     category = category,
                     isEditingName = editingNameId == category.id,
                     isEditingEmoji = editingEmojiId == category.id,
                     deleteModeActive = deleteModeActive,
                     onNameClick = {
-                        if (deleteModeActive) deleteTargetId = category.id
-                        else editingNameId = category.id
+                        if (deleteModeActive) {
+                            deleteTargetId = category.id
+                        } else {
+                            editingNameId = category.id
+                        }
                     },
-                    onNameChange = { newName ->
-                        updateCategory(category.id) { it.copy(name = newName) }
+                    onNameCommit = { newName ->
+                        onRenameCategory(category, newName)
+                        editingNameId = null
                     },
-                    onNameDone = { editingNameId = null },
                     onEmojiClick = {
-                        if (deleteModeActive) deleteTargetId = category.id
-                        else editingEmojiId = category.id
+                        if (deleteModeActive) {
+                            deleteTargetId = category.id
+                        } else {
+                            editingEmojiId = category.id
+                        }
                     },
-                    onEmojiChange = { newEmoji ->
-                        updateCategory(category.id) { it.copy(emoji = newEmoji) }
+                    onEmojiCommit = { newEmoji ->
+                        onReemojiCategory(category, newEmoji)
+                        editingEmojiId = null
                     },
-                    onEmojiDone = { editingEmojiId = null },
                     onColorClick = {
-                        if (deleteModeActive) deleteTargetId = category.id
-                        else colorPickerTargetId = category.id
+                        if (deleteModeActive) {
+                            deleteTargetId = category.id
+                        } else {
+                            colorPickerTargetId = category.id
+                        }
                     }
                 )
             }
         }
     }
 
-    // Color picker dialog
     colorPickerTargetId?.let { targetId ->
+        val target = categories.first { it.id == targetId }
+
         AlertDialog(
             onDismissRequest = { colorPickerTargetId = null },
             confirmButton = {},
             title = { Text("Choose a color") },
             text = {
                 ColorPickerGrid { pickedColor ->
-                    updateCategory(targetId) { it.copy(color = pickedColor) }
+                    onRecolorCategory(target, pickedColor)
                     colorPickerTargetId = null
                 }
             }
         )
     }
 
-    // Delete confirmation dialog
     deleteTargetId?.let { targetId ->
+        val target = categories.first { it.id == targetId }
+
         AlertDialog(
             onDismissRequest = { deleteTargetId = null },
             title = { Text("Delete category?") },
             text = { Text("Transactions in this category will be moved to Default.") },
             confirmButton = {
-                TextButton(onClick = {
-                    deleteCategory(targetId)
-                    deleteTargetId = null
-                    deleteModeActive = false
-                }) {
+                TextButton(
+                    onClick = {
+                        onDeleteCategory(target)
+                        deleteTargetId = null
+                        deleteModeActive = false
+                    }
+                ) {
                     Text("Delete")
                 }
             },
@@ -209,14 +212,21 @@ fun CategoriesScreen(
         )
     }
 
-    // "New Category" already exists warning
     if (showDuplicateNewCategoryDialog) {
         AlertDialog(
             onDismissRequest = { showDuplicateNewCategoryDialog = false },
             title = { Text("Unedited category found") },
-            text = { Text("You already have a \"new category\".") },
+            text = {
+                Text(
+                    "You already have a \"New Category\" — please rename it before adding another one."
+                )
+            },
             confirmButton = {
-                TextButton(onClick = { showDuplicateNewCategoryDialog = false }) {
+                TextButton(
+                    onClick = {
+                        showDuplicateNewCategoryDialog = false
+                    }
+                ) {
                     Text("OK")
                 }
             }
@@ -238,6 +248,7 @@ private fun CategoriesTableHeader() {
             fontSize = 16.sp,
             modifier = Modifier.weight(1f)
         )
+
         Text(
             text = "Color",
             color = SecondaryTextColor,
@@ -245,6 +256,7 @@ private fun CategoriesTableHeader() {
             modifier = Modifier.width(60.dp),
             textAlign = TextAlign.Center
         )
+
         Text(
             text = "Emoji",
             color = SecondaryTextColor,
@@ -253,7 +265,9 @@ private fun CategoriesTableHeader() {
             textAlign = TextAlign.Center
         )
     }
+
     Spacer(modifier = Modifier.height(6.dp))
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -270,11 +284,9 @@ private fun CategoryRow(
     isEditingEmoji: Boolean,
     deleteModeActive: Boolean,
     onNameClick: () -> Unit,
-    onNameChange: (String) -> Unit,
-    onNameDone: () -> Unit,
+    onNameCommit: (String) -> Unit,
     onEmojiClick: () -> Unit,
-    onEmojiChange: (String) -> Unit,
-    onEmojiDone: () -> Unit,
+    onEmojiCommit: (String) -> Unit,
     onColorClick: () -> Unit
 ) {
     Row(
@@ -285,15 +297,32 @@ private fun CategoryRow(
     ) {
         Box(modifier = Modifier.weight(1f)) {
             if (isEditingName) {
+                var text by remember(category.id) {
+                    mutableStateOf(category.name)
+                }
+
                 val focusRequester = remember { FocusRequester() }
-                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+
                 BasicTextField(
-                    value = category.name,
-                    onValueChange = onNameChange,
+                    value = text,
+                    onValueChange = { text = it },
                     singleLine = true,
-                    textStyle = TextStyle(fontSize = 17.sp, color = Color.Black),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onNameDone() }),
+                    textStyle = TextStyle(
+                        fontSize = 17.sp,
+                        color = Color.Black
+                    ),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            onNameCommit(text)
+                        }
+                    ),
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .fillMaxWidth()
@@ -301,9 +330,15 @@ private fun CategoryRow(
             } else {
                 Text(
                     text = category.name.lowercase(),
-                    color = if (deleteModeActive) DeleteModeActiveColor else Color.Black,
+                    color = if (deleteModeActive) {
+                        DeleteModeActiveColor
+                    } else {
+                        Color.Black
+                    },
                     fontSize = 17.sp,
-                    modifier = Modifier.clickable { onNameClick() }
+                    modifier = Modifier.clickable {
+                        onNameClick()
+                    }
                 )
             }
         }
@@ -316,8 +351,12 @@ private fun CategoryRow(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(category.color).copy(alpha = 0.25f))
-                    .clickable { onColorClick() }
+                    .background(
+                        Color(category.color).copy(alpha = 0.25f)
+                    )
+                    .clickable {
+                        onColorClick()
+                    }
             )
         }
 
@@ -326,19 +365,33 @@ private fun CategoryRow(
             contentAlignment = Alignment.Center
         ) {
             if (isEditingEmoji) {
+                var text by remember(category.id) {
+                    mutableStateOf(category.emoji)
+                }
+
                 val focusRequester = remember { FocusRequester() }
-                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+
                 BasicTextField(
-                    value = category.emoji,
-                    onValueChange = onEmojiChange,
+                    value = text,
+                    onValueChange = { text = it },
                     singleLine = true,
                     textStyle = TextStyle(
                         fontSize = 18.sp,
                         color = Color.Black,
                         textAlign = TextAlign.Center
                     ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onEmojiDone() }),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            onEmojiCommit(text)
+                        }
+                    ),
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .width(40.dp)
@@ -348,29 +401,17 @@ private fun CategoryRow(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(category.color).copy(alpha = 0.25f))
-                        .clickable { onEmojiClick() },
+                        .background(
+                            Color(category.color).copy(alpha = 0.25f)
+                        )
+                        .clickable {
+                            onEmojiClick()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = category.emoji, fontSize = 18.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ColorPickerGrid(onColorPicked: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ColorPalette.chunked(5).forEach { rowColors ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                rowColors.forEach { colorInt ->
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(colorInt))
-                            .clickable { onColorPicked(colorInt) }
+                    Text(
+                        text = category.emoji,
+                        fontSize = 18.sp
                     )
                 }
             }
@@ -378,14 +419,29 @@ private fun ColorPickerGrid(onColorPicked: (Int) -> Unit) {
     }
 }
 
-// Temporary fake categories, same ones used across Dashboard/Add for
-// consistency during testing. Will be replaced by real Room-backed data,
-// with the full base-category list, once we wire up persistence.
-private fun fakeCategoriesForTesting(): List<Category> = listOf(
-    Category(id = 1, name = "groceries", color = 0xFFF48FB1.toInt(), emoji = "🛍️"),
-    Category(id = 2, name = "fuel", color = 0xFFE57373.toInt(), emoji = "⛽"),
-    Category(id = 3, name = "gift", color = 0xFFFFB74D.toInt(), emoji = "🎁"),
-    Category(id = 4, name = "paycheck", color = 0xFF64B5F6.toInt(), emoji = "💰"),
-    Category(id = 5, name = "entertainment", color = 0xFFBA68C8.toInt(), emoji = "🎬"),
-    Category(id = 6, name = "health", color = 0xFF4DB6AC.toInt(), emoji = "💊")
-)
+@Composable
+private fun ColorPickerGrid(
+    onColorPicked: (Int) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        ColorPalette.chunked(5).forEach { rowColors ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowColors.forEach { colorInt ->
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(colorInt))
+                            .clickable {
+                                onColorPicked(colorInt)
+                            }
+                    )
+                }
+            }
+        }
+    }
+}
