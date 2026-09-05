@@ -11,6 +11,7 @@ object AppContainer {
             repository ?: run {
                 val database = AppDatabase.getInstance(context)
                 BerryFlowRepository(
+                    database = database,
                     categoryDao = database.categoryDao(),
                     balanceDao = database.balanceDao(),
                     transactionDao = database.transactionDao(),

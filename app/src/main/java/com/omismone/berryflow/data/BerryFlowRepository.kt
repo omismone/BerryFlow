@@ -3,8 +3,10 @@ package com.omismone.berryflow.data
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
+import androidx.room.withTransaction
 
 class BerryFlowRepository(
+    private val database: AppDatabase,
     private val categoryDao: CategoryDao,
     private val balanceDao: BalanceDao,
     private val transactionDao: TransactionDao,
@@ -132,4 +134,41 @@ class BerryFlowRepository(
 
     private fun localDateToMillis(date: java.time.LocalDate, zone: java.time.ZoneId): Long =
         date.atStartOfDay(zone).toInstant().toEpochMilli()
+
+    suspend fun exportDataAsJson(): String {
+        return buildBackupJson(
+            categories = categoryDao.getAllOnce(),
+            transactions = transactionDao.getAllOnce(),
+            recurrentEvents = recurrentEventDao.getAllOnce(),
+            balance = balanceDao.getOnce()
+        )
+    }
+
+    // Replaces everything atomically: either the whole import succeeds, or
+    // (on a malformed file / parse error) nothing is touched.
+    suspend fun importDataFromJson(json: String) {
+        val parsed = parseBackupJson(json)
+        database.withTransaction {
+            categoryDao.deleteAll()
+            transactionDao.deleteAll()
+            recurrentEventDao.deleteAll()
+            balanceDao.deleteAll()
+
+            categoryDao.insertAll(parsed.categories)
+            transactionDao.insertAll(parsed.transactions)
+            recurrentEventDao.insertAll(parsed.recurrentEvents)
+            parsed.balance?.let { balanceDao.upsert(it) }
+        }
+    }
+
+    suspend fun eraseAllData() {
+        database.withTransaction {
+            categoryDao.deleteAll()
+            transactionDao.deleteAll()
+            recurrentEventDao.deleteAll()
+            balanceDao.deleteAll()
+        }
+        // Without this the app would be left with no categories at all.
+        ensureCategoriesSeeded()
+    }
 }

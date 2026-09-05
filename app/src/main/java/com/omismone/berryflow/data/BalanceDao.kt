@@ -12,4 +12,10 @@ interface BalanceDao {
 
     @Query("SELECT * FROM balance WHERE id = 0")
     fun get(): Flow<Balance?>
+
+    @Query("SELECT * FROM balance WHERE id = 0")
+    suspend fun getOnce(): Balance?
+
+    @Query("DELETE FROM balance")
+    suspend fun deleteAll()
 }

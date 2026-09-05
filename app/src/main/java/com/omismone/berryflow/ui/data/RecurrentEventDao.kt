@@ -26,4 +26,10 @@ interface RecurrentEventDao {
 
     @Query("SELECT * FROM recurrent_events")
     suspend fun getAllOnce(): List<RecurrentEvent>
+
+    @Insert
+    suspend fun insertAll(events: List<RecurrentEvent>)
+
+    @Query("DELETE FROM recurrent_events")
+    suspend fun deleteAll()
 }

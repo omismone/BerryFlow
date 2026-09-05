@@ -33,4 +33,10 @@ interface TransactionDao {
 
     @Insert
     suspend fun insertAll(transactions: List<Transaction>)
+
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllOnce(): List<Transaction>
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
 }

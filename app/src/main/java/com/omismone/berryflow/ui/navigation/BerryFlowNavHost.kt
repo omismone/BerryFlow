@@ -45,6 +45,8 @@ import java.time.ZoneId
 import com.omismone.berryflow.ui.AppViewModel
 import com.omismone.berryflow.ui.AppViewModelFactory
 import androidx.compose.runtime.LaunchedEffect
+import com.omismone.berryflow.ui.data.DataViewModel
+import com.omismone.berryflow.ui.data.DataViewModelFactory
 
 private object Routes {
     const val DASHBOARD = "dashboard"
@@ -298,7 +300,26 @@ fun BerryFlowApp(repository: BerryFlowRepository) {
         }
 
         composable(Routes.DATA) {
-            DataScreen(onHomeClick = { navController.popBackStack() })
+            val viewModel: DataViewModel = viewModel(factory = DataViewModelFactory(repository))
+            val context = androidx.compose.ui.platform.LocalContext.current
+
+            DataScreen(
+                onHomeClick = { navController.popBackStack() },
+                onErased = {
+                    navController.navigate(adjustBalanceRoute(onboarding = true)) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onImport = { uri, onResult ->
+                    viewModel.importData(context.contentResolver, uri, onResult)
+                },
+                onExport = { uri, onResult ->
+                    viewModel.exportData(context.contentResolver, uri, onResult)
+                },
+                onErase = { onResult ->
+                    viewModel.eraseData(onResult)
+                }
+            )
         }
     }
 }
