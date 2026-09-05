@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [Category::class, Transaction::class, Balance::class],
+    entities = [Category::class, Transaction::class, Balance::class, RecurrentEvent::class],
     version = 1,
     exportSchema = false
 )
@@ -14,6 +14,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
     abstract fun balanceDao(): BalanceDao
+    abstract fun recurrentEventDao(): RecurrentEventDao
 
     companion object {
         @Volatile

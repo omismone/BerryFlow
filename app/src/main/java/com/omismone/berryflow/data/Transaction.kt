@@ -10,5 +10,7 @@ data class Transaction(
     val amount: Double,
     val isIncome: Boolean,
     val categoryId: Long,
-    val date: Long // epoch millis
+    val date: Long, // epoch millis
+    // User-entered custom name. Null/blank means "use the category's name".
+    val name: String? = null
 )
