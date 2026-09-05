@@ -44,6 +44,7 @@ import java.time.Instant
 import java.time.ZoneId
 import com.omismone.berryflow.ui.AppViewModel
 import com.omismone.berryflow.ui.AppViewModelFactory
+import androidx.compose.runtime.LaunchedEffect
 
 private object Routes {
     const val DASHBOARD = "dashboard"
@@ -93,6 +94,14 @@ fun BerryFlowApp(repository: BerryFlowRepository) {
             )
             val balance by viewModel.balance.collectAsState()
             val transactions by viewModel.transactions.collectAsState()
+
+            // Re-runs every time this composable re-enters composition, i.e.
+            // every time you navigate back to Dashboard - unlike code in the
+            // ViewModel's init, which only ran once for the whole app
+            // session since the ViewModel survives across navigation.
+            LaunchedEffect(Unit) {
+                repository.generatePendingRecurrentTransactions()
+            }
 
             DashboardScreen(
                 balance = balance,

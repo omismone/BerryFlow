@@ -87,4 +87,49 @@ class BerryFlowRepository(
     suspend fun deleteRecurrentEvent(event: RecurrentEvent) {
         recurrentEventDao.delete(event)
     }
+
+    // Checks every recurrent event and creates any transactions that are
+    // "due" (occurrence date <= today) but haven't been generated yet.
+    // Runs on app startup no background scheduling, just catch-up on open.
+    suspend fun generatePendingRecurrentTransactions() {
+        val today = java.time.LocalDate.now()
+        val zone = java.time.ZoneId.systemDefault()
+
+        recurrentEventDao.getAllOnce().forEach { event ->
+            val frequency = Frequency.valueOf(event.frequency)
+            var nextDate = if (event.lastGeneratedDate != null) {
+                frequency.nextOccurrenceAfter(millisToLocalDate(event.lastGeneratedDate, zone))
+            } else {
+                millisToLocalDate(event.startDate, zone)
+            }
+
+            val newTransactions = mutableListOf<Transaction>()
+            var newLastGeneratedDate = event.lastGeneratedDate
+
+            while (!nextDate.isAfter(today)) {
+                newTransactions.add(
+                    Transaction(
+                        amount = event.amount,
+                        isIncome = event.isIncome,
+                        categoryId = event.categoryId,
+                        date = localDateToMillis(nextDate, zone),
+                        name = event.name
+                    )
+                )
+                newLastGeneratedDate = localDateToMillis(nextDate, zone)
+                nextDate = frequency.nextOccurrenceAfter(nextDate)
+            }
+
+            if (newTransactions.isNotEmpty()) {
+                transactionDao.insertAll(newTransactions)
+                recurrentEventDao.update(event.copy(lastGeneratedDate = newLastGeneratedDate))
+            }
+        }
+    }
+
+    private fun millisToLocalDate(millis: Long, zone: java.time.ZoneId): java.time.LocalDate =
+        java.time.Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+
+    private fun localDateToMillis(date: java.time.LocalDate, zone: java.time.ZoneId): Long =
+        date.atStartOfDay(zone).toInstant().toEpochMilli()
 }

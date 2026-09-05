@@ -30,4 +30,7 @@ interface TransactionDao {
     // Used when a category is deleted: moves its transactions to Default.
     @Query("UPDATE transactions SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
     suspend fun reassignCategory(oldCategoryId: Long, newCategoryId: Long)
+
+    @Insert
+    suspend fun insertAll(transactions: List<Transaction>)
 }

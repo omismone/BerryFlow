@@ -23,4 +23,7 @@ interface RecurrentEventDao {
 
     @Query("SELECT * FROM recurrent_events ORDER BY id ASC")
     fun getAll(): Flow<List<RecurrentEvent>>
+
+    @Query("SELECT * FROM recurrent_events")
+    suspend fun getAllOnce(): List<RecurrentEvent>
 }

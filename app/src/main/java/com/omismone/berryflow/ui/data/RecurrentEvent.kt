@@ -14,5 +14,8 @@ data class RecurrentEvent(
     // Stored as the Frequency enum's name (e.g. "WEEKLY") to avoid adding a
     // Room TypeConverter just for one enum field.
     val frequency: String,
-    val name: String? = null
+    val name: String? = null,
+    // Epoch millis of the last occurrence already turned into a transaction.
+    // Null means none generated yet (first occurrence is startDate itself).
+    val lastGeneratedDate: Long? = null
 )
