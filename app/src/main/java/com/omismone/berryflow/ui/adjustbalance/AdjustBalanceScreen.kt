@@ -1,16 +1,18 @@
 package com.omismone.berryflow.ui.adjustbalance
 
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,14 +37,25 @@ private val OkKeyBackgroundColor = Color(0xFF424242)
 @Composable
 fun AdjustBalanceScreen(
     currentBalance: Double,
+    isOnboarding: Boolean = false,
     onDiscardClick: () -> Unit,
     onSaveClick: (Double) -> Unit
 ) {
-    // Starts pre-filled with the current balance, so the user sees the
-    // starting point and can correct it, instead of starting from empty.
+    val context = LocalContext.current
+
+    // Blocks the system/gesture back action while onboarding, so the user
+    // can't leave without setting a balance first.
+    BackHandler(enabled = isOnboarding) { }
+
     var amountInput by remember { mutableStateOf(formatPlainAmount(currentBalance)) }
+    var hasBeenEdited by remember { mutableStateOf(false) }
 
     fun onDigitPress(digit: String) {
+        if (!hasBeenEdited) {
+            amountInput = digit
+            hasBeenEdited = true
+            return
+        }
         val dotIndex = amountInput.indexOf('.')
         if (dotIndex != -1) {
             val decimalsTyped = amountInput.length - dotIndex - 1
@@ -51,13 +65,28 @@ fun AdjustBalanceScreen(
     }
 
     fun onDotPress() {
+        if (!hasBeenEdited) {
+            amountInput = "0."
+            hasBeenEdited = true
+            return
+        }
         if (amountInput.contains('.')) return
         amountInput = if (amountInput.isEmpty()) "0." else "$amountInput."
     }
 
     fun onBackspacePress() {
+        if (!hasBeenEdited) {
+            amountInput = ""
+            hasBeenEdited = true
+            return
+        }
         if (amountInput.isEmpty()) return
         amountInput = amountInput.dropLast(1)
+    }
+
+    fun performSave() {
+        onSaveClick(parseAmount(amountInput))
+        Toast.makeText(context, "Balance updated", Toast.LENGTH_SHORT).show()
     }
 
     val displayAmount = amountInput.ifEmpty { "0.00" }
@@ -74,17 +103,19 @@ fun AdjustBalanceScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onDiscardClick) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Discard and go back",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
+            if (isOnboarding) {
+                Spacer(modifier = Modifier.size(48.dp)) // keeps Save aligned to the right
+            } else {
+                IconButton(onClick = onDiscardClick) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Discard and go back",
+                        tint = SecondaryTextColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
             }
-            IconButton(onClick = {
-                onSaveClick(parseAmount(amountInput))
-            }) {
+            IconButton(onClick = { performSave() }) {
                 Icon(
                     imageVector = Icons.Default.Save,
                     contentDescription = "Save",
@@ -94,7 +125,21 @@ fun AdjustBalanceScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(70.dp))
+        if (isOnboarding) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Welcome! Set your starting balance to get started.",
+                color = SecondaryTextColor,
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(46.dp))
+        } else {
+            Spacer(modifier = Modifier.height(70.dp))
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -126,15 +171,12 @@ fun AdjustBalanceScreen(
             }
         }
 
-        // Fixed spacing instead of a flexible/weighted spacer, to keep the
-        // keypad in the lower-middle area rather than pushed to the very
-        // bottom — same visual rhythm as the finalized Add screen.
         Spacer(modifier = Modifier.height(150.dp))
 
         NumericKeypad(
             onDigitPress = { onDigitPress(it) },
             onDotPress = { onDotPress() },
-            onOkPress = { /* behavior not defined yet */ }
+            onOkPress = { performSave() }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -218,6 +260,6 @@ private fun formatPlainAmount(amount: Double): String {
 }
 
 private fun parseAmount(input: String): Double {
-    val cleaned = input.trimEnd('.') // handle a trailing "." with no digits after it
+    val cleaned = input.trimEnd('.')
     return cleaned.toDoubleOrNull() ?: 0.0
 }
