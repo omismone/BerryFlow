@@ -1,5 +1,6 @@
 package com.omismone.berryflow.ui.recurrentevents
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,11 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
@@ -20,11 +21,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
+import com.omismone.berryflow.data.Frequency
 import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 import java.time.LocalDate
 import java.time.ZoneId
@@ -43,18 +46,31 @@ private val OkKeyBackgroundColor = Color(0xFF424242)
 fun RecurrentEventsScreen(
     categories: List<Category>,
     initialCategory: Category,
+    isEditMode: Boolean = false,
+    initialAmount: Double = 0.0,
+    initialName: String = "",
+    initialIsIncome: Boolean = false,
+    initialDate: LocalDate = LocalDate.now(),
+    initialFrequency: Frequency = Frequency.MONTHLY,
     onDiscardClick: () -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: (amount: Double, name: String, isIncome: Boolean, category: Category, date: LocalDate, frequency: Frequency) -> Unit,
+    onDeleteClick: () -> Unit = {}
 ) {
-    var amountInput by remember { mutableStateOf("") }
-    var transactionName by remember { mutableStateOf("") }
-    var isIncome by remember { mutableStateOf(false) }
-    var startDate by remember { mutableStateOf(LocalDate.now()) }
-    var frequency by remember { mutableStateOf(Frequency.MONTHLY) }
+    val context = LocalContext.current
+
+    var amountInput by remember {
+        mutableStateOf(if (initialAmount > 0.0) formatPlainAmount(initialAmount) else "")
+    }
+    var transactionName by remember { mutableStateOf(initialName) }
+    var isIncome by remember { mutableStateOf(initialIsIncome) }
+    var startDate by remember { mutableStateOf(initialDate) }
+    var frequency by remember { mutableStateOf(initialFrequency) }
     var selectedCategory by remember { mutableStateOf(initialCategory) }
     var showCategoryMenu by remember { mutableStateOf(false) }
     var showFrequencyMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var hasSubmitted by remember { mutableStateOf(false) }
 
     fun onDigitPress(digit: String) {
         val dotIndex = amountInput.indexOf('.')
@@ -73,6 +89,22 @@ fun RecurrentEventsScreen(
     fun onBackspacePress() {
         if (amountInput.isEmpty()) return
         amountInput = amountInput.dropLast(1)
+    }
+
+    fun onOkPress() {
+        if (hasSubmitted) return
+        val amount = parseAmount(amountInput)
+        if (amount <= 0.0) {
+            Toast.makeText(context, "Please enter an amount", Toast.LENGTH_SHORT).show()
+            return
+        }
+        hasSubmitted = true
+        onSaveClick(amount, transactionName, isIncome, selectedCategory, startDate, frequency)
+        Toast.makeText(
+            context,
+            if (isEditMode) "Recurrent event updated" else "Recurrent event saved",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     val displayAmount = amountInput.ifEmpty { "0.00" }
@@ -97,13 +129,26 @@ fun RecurrentEventsScreen(
                     modifier = Modifier.size(25.dp)
                 )
             }
-            IconButton(onClick = onSaveClick) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = "Save",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isEditMode) {
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete recurrent event",
+                            tint = SecondaryTextColor,
+                            modifier = Modifier.size(23.dp)
+                        )
+                    }
+                }
+                IconButton(onClick = { onOkPress() }) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowRight,
+                        contentDescription = "Save",
+                        tint = SecondaryTextColor,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
             }
         }
 
@@ -250,7 +295,7 @@ fun RecurrentEventsScreen(
         NumericKeypad(
             onDigitPress = { onDigitPress(it) },
             onDotPress = { onDotPress() },
-            onOkPress = { /* behavior not defined yet */ }
+            onOkPress = { onOkPress() }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -285,6 +330,31 @@ fun RecurrentEventsScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete recurrent event?") },
+            text = { Text("This recurring transaction will no longer be created.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (!hasSubmitted) {
+                        hasSubmitted = true
+                        showDeleteConfirm = false
+                        onDeleteClick()
+                        Toast.makeText(context, "Recurrent event deleted", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -453,6 +523,14 @@ private fun KeypadKey(label: String, modifier: Modifier = Modifier, onClick: () 
     ) {
         Text(text = label, fontSize = 24.sp, color = Color.Black)
     }
+}
+
+private fun formatPlainAmount(amount: Double): String =
+    String.format(Locale.US, "%.2f", amount)
+
+private fun parseAmount(input: String): Double {
+    val cleaned = input.trimEnd('.')
+    return cleaned.toDoubleOrNull() ?: 0.0
 }
 
 private fun formatDateLabel(date: LocalDate): String {

@@ -20,8 +20,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
+import com.omismone.berryflow.data.Frequency
+import com.omismone.berryflow.data.RecurrentEvent
 import com.omismone.berryflow.ui.theme.TopBarButtonPadding
-import java.time.LocalDate
 import java.util.Locale
 
 private val SecondaryTextColor = Color(0xFF9E9E9E)
@@ -30,11 +31,14 @@ private val DeleteModeActiveColor = Color(0xFFE53935)
 
 @Composable
 fun RecurrentEventsListScreen(
+    events: List<RecurrentEvent>,
+    categories: List<Category>,
     onHomeClick: () -> Unit,
     onAddClick: () -> Unit,
-    onEventClick: (RecurrentEvent) -> Unit
+    onEventClick: (RecurrentEvent) -> Unit,
+    onDeleteEvent: (RecurrentEvent) -> Unit
 ) {
-    var events by remember { mutableStateOf(fakeEventsForTesting()) }
+    val categoriesById = categories.associateBy { it.id }
     var deleteModeActive by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<Long?>(null) }
 
@@ -102,27 +106,32 @@ fun RecurrentEventsListScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
             ) {
                 items(events, key = { it.id }) { event ->
-                    EventRow(
-                        event = event,
-                        deleteModeActive = deleteModeActive,
-                        onClick = {
-                            if (deleteModeActive) deleteTargetId = event.id
-                            else onEventClick(event)
-                        }
-                    )
+                    val category = categoriesById[event.categoryId]
+                    if (category != null) {
+                        EventRow(
+                            event = event,
+                            category = category,
+                            deleteModeActive = deleteModeActive,
+                            onClick = {
+                                if (deleteModeActive) deleteTargetId = event.id
+                                else onEventClick(event)
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 
     deleteTargetId?.let { targetId ->
+        val target = events.first { it.id == targetId }
         AlertDialog(
             onDismissRequest = { deleteTargetId = null },
             title = { Text("Delete recurrent event?") },
             text = { Text("This recurring transaction will no longer be created.") },
             confirmButton = {
                 TextButton(onClick = {
-                    events = events.filterNot { it.id == targetId }
+                    onDeleteEvent(target)
                     deleteTargetId = null
                     deleteModeActive = false
                 }) {
@@ -146,25 +155,14 @@ private fun EventsTableHeader() {
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Text(text = "Name", color = SecondaryTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
         Text(
-            text = "Name",
-            color = SecondaryTextColor,
-            fontSize = 16.sp,
-            modifier = Modifier.weight(1f)
+            text = "Amount", color = SecondaryTextColor, fontSize = 16.sp,
+            modifier = Modifier.width(90.dp), textAlign = TextAlign.Center
         )
         Text(
-            text = "Amount",
-            color = SecondaryTextColor,
-            fontSize = 16.sp,
-            modifier = Modifier.width(90.dp),
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "Frequency",
-            color = SecondaryTextColor,
-            fontSize = 16.sp,
-            modifier = Modifier.width(90.dp),
-            textAlign = TextAlign.Center
+            text = "Frequency", color = SecondaryTextColor, fontSize = 16.sp,
+            modifier = Modifier.width(90.dp), textAlign = TextAlign.Center
         )
     }
     Spacer(modifier = Modifier.height(6.dp))
@@ -180,6 +178,7 @@ private fun EventsTableHeader() {
 @Composable
 private fun EventRow(
     event: RecurrentEvent,
+    category: Category,
     deleteModeActive: Boolean,
     onClick: () -> Unit
 ) {
@@ -198,14 +197,14 @@ private fun EventRow(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(event.category.color).copy(alpha = 0.25f)),
+                    .background(Color(category.color).copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = event.category.emoji, fontSize = 16.sp)
+                Text(text = category.emoji, fontSize = 16.sp)
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = event.category.name.lowercase(),
+                text = event.name?.takeIf { it.isNotBlank() } ?: category.name.lowercase(),
                 color = if (deleteModeActive) DeleteModeActiveColor else Color.Black,
                 fontSize = 17.sp
             )
@@ -220,7 +219,7 @@ private fun EventRow(
         )
 
         Text(
-            text = event.frequency.label,
+            text = Frequency.valueOf(event.frequency).label,
             color = if (deleteModeActive) DeleteModeActiveColor else SecondaryTextColor,
             fontSize = 15.sp,
             modifier = Modifier.width(90.dp),
@@ -232,14 +231,4 @@ private fun EventRow(
 private fun formatSignedAmount(amount: Double, isIncome: Boolean): String {
     val sign = if (isIncome) "+" else "-"
     return "$sign ${String.format(Locale.US, "%.2f", amount)} €"
-}
-
-// Temporary fake data, same categories used across the rest of the app.
-private fun fakeEventsForTesting(): List<RecurrentEvent> {
-    val fuel = Category(id = 2, name = "fuel", color = 0xFFE57373.toInt(), emoji = "⛽")
-    val paycheck = Category(id = 4, name = "paycheck", color = 0xFF64B5F6.toInt(), emoji = "💰")
-    return listOf(
-        RecurrentEvent(1, 1500.0, true, paycheck, LocalDate.now(), Frequency.MONTHLY),
-        RecurrentEvent(2, 50.0, false, fuel, LocalDate.now(), Frequency.WEEKLY)
-    )
 }
