@@ -14,8 +14,9 @@ import kotlinx.coroutines.flow.stateIn
 // (like Add) don't wait on a fresh Room query before rendering - this was
 // causing a visible stutter on the enter animation.
 class AppViewModel(repository: BerryFlowRepository) : ViewModel() {
-    val categories: StateFlow<List<Category>> = repository.userCategories
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // null until the first emission from the database (see DashboardViewModel).
+    val categories: StateFlow<List<Category>?> = repository.categories
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 }
 
 class AppViewModelFactory(private val repository: BerryFlowRepository) : ViewModelProvider.Factory {
