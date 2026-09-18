@@ -10,7 +10,8 @@ data class Category(
     val name: String,
     val color: Int,
     val emoji: String,
-    // True only for the single non-editable, non-deletable "Default"
-    // category that transactions fall back to when their category is deleted.
+    // True only for the single "Default" category that transactions fall back
+    // to when their category is deleted. It is editable like any other
+    // category, but it can never be deleted.
     val isDefault: Boolean = false
 )

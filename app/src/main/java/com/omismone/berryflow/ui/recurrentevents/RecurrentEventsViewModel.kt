@@ -8,9 +8,7 @@ import com.omismone.berryflow.data.Category
 import com.omismone.berryflow.data.Frequency
 import com.omismone.berryflow.data.RecurrentEvent
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 // eventId == null -> creating a new recurrent event.
@@ -21,9 +19,6 @@ class RecurrentEventsViewModel(
 ) : ViewModel() {
 
     val isEditMode: Boolean = eventId != null
-
-    val categories: StateFlow<List<Category>> = repository.userCategories
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _editingEvent = MutableStateFlow<RecurrentEvent?>(null)
     val editingEvent: StateFlow<RecurrentEvent?> = _editingEvent

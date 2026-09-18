@@ -27,6 +27,12 @@ interface RecurrentEventDao {
     @Query("SELECT * FROM recurrent_events")
     suspend fun getAllOnce(): List<RecurrentEvent>
 
+    @Query("UPDATE recurrent_events SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
+    suspend fun reassignCategory(oldCategoryId: Long, newCategoryId: Long)
+
+    @Query("UPDATE recurrent_events SET categoryId = :defaultCategoryId WHERE categoryId NOT IN (SELECT id FROM categories)")
+    suspend fun reassignOrphaned(defaultCategoryId: Long)
+
     @Insert
     suspend fun insertAll(events: List<RecurrentEvent>)
 

@@ -31,6 +31,10 @@ interface TransactionDao {
     @Query("UPDATE transactions SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
     suspend fun reassignCategory(oldCategoryId: Long, newCategoryId: Long)
 
+    // Safety net for references to categories that no longer exist.
+    @Query("UPDATE transactions SET categoryId = :defaultCategoryId WHERE categoryId NOT IN (SELECT id FROM categories)")
+    suspend fun reassignOrphaned(defaultCategoryId: Long)
+
     @Insert
     suspend fun insertAll(transactions: List<Transaction>)
 

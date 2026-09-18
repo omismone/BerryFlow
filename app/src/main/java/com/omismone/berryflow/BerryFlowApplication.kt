@@ -12,6 +12,7 @@ class BerryFlowApplication : Application() {
         CoroutineScope(Dispatchers.IO).launch {
             val repository = AppContainer.getRepository(this@BerryFlowApplication)
             repository.ensureCategoriesSeeded()
+            repository.repairOrphanedCategoryReferences()
             repository.generatePendingRecurrentTransactions()
         }
     }

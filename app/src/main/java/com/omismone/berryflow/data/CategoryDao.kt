@@ -21,9 +21,10 @@ interface CategoryDao {
     @Delete
     suspend fun delete(category: Category)
 
-    // User-editable categories only, excludes the Default category.
-    @Query("SELECT * FROM categories WHERE isDefault = 0")
-    fun getUserCategories(): Flow<List<Category>>
+    // Every category, including Default: Default is a regular category that
+    // transactions can reference, so every list must be able to resolve it.
+    @Query("SELECT * FROM categories")
+    fun getAll(): Flow<List<Category>>
 
     @Query("SELECT * FROM categories WHERE isDefault = 1 LIMIT 1")
     suspend fun getDefaultCategory(): Category?

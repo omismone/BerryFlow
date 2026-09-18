@@ -12,7 +12,7 @@ class BerryFlowRepository(
     private val transactionDao: TransactionDao,
     private val recurrentEventDao: RecurrentEventDao
 ) {
-    val userCategories: Flow<List<Category>> = categoryDao.getUserCategories()
+    val categories: Flow<List<Category>> = categoryDao.getAll()
 
     suspend fun ensureCategoriesSeeded() {
         if (categoryDao.count() == 0) {
@@ -21,20 +21,40 @@ class BerryFlowRepository(
         }
     }
 
-    suspend fun addCategory(category: Category) {
-        categoryDao.insert(category)
+    suspend fun addCategory(category: Category): Long {
+        return categoryDao.insert(category)
     }
 
     suspend fun updateCategory(category: Category) {
         categoryDao.update(category)
     }
 
+    // Reassigns everything that references the category (transactions and
+    // recurrent events) to Default and deletes it, atomically. The Default
+    // category itself can't be deleted.
     suspend fun deleteCategory(category: Category) {
-        val defaultCategory = categoryDao.getDefaultCategory()
-        if (defaultCategory != null) {
+        database.withTransaction {
+            val defaultCategory = categoryDao.getDefaultCategory() ?: return@withTransaction
+            if (category.isDefault || category.id == defaultCategory.id) return@withTransaction
             transactionDao.reassignCategory(category.id, defaultCategory.id)
+            recurrentEventDao.reassignCategory(category.id, defaultCategory.id)
+            categoryDao.delete(category)
         }
-        categoryDao.delete(category)
+    }
+
+    // Points any transaction/recurrent event whose category no longer exists
+    // at Default, so nothing is counted in totals but missing from the lists.
+    suspend fun repairOrphanedCategoryReferences() {
+        database.withTransaction { repairOrphansInTransaction() }
+    }
+
+    private suspend fun repairOrphansInTransaction() {
+        // Default is the fallback for every record, so it must exist even if
+        // a damaged or hand-edited backup left it out.
+        val defaultCategory = categoryDao.getDefaultCategory()
+            ?: CategorySeed.defaultCategory.let { it.copy(id = categoryDao.insert(it)) }
+        transactionDao.reassignOrphaned(defaultCategory.id)
+        recurrentEventDao.reassignOrphaned(defaultCategory.id)
     }
 
     // Raw manually-set base amount, without transactions factored in.
@@ -158,6 +178,7 @@ class BerryFlowRepository(
             transactionDao.insertAll(parsed.transactions)
             recurrentEventDao.insertAll(parsed.recurrentEvents)
             parsed.balance?.let { balanceDao.upsert(it) }
+            repairOrphansInTransaction()
         }
     }
 
