@@ -1,14 +1,19 @@
 package com.omismone.berryflow.ui.categories
 
+import com.omismone.berryflow.ui.theme.AppTheme
+import com.omismone.berryflow.ui.theme.ScreenTopBar
+import com.omismone.berryflow.ui.theme.TopBarIconButton
+import com.omismone.berryflow.ui.theme.TopBarNav
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -18,151 +23,106 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
+import kotlinx.coroutines.delay
 
-private val SecondaryTextColor = Color(0xFF9E9E9E)
-private val BorderColor = Color(0xFFE0E0E0)
-private val DeleteModeActiveColor = Color(0xFFE53935)
 
-private val NewCategoryDefaultColor = 0xFFBDBDBD.toInt()
-private const val NewCategoryDefaultEmoji = "❓"
-private const val NewCategoryDefaultName = "New Category"
-
-private val ColorPalette = listOf(
-    0xFFF48FB1.toInt(), 0xFFE57373.toInt(), 0xFFFFB74D.toInt(), 0xFF64B5F6.toInt(),
-    0xFF81C784.toInt(), 0xFFBA68C8.toInt(), 0xFF4DB6AC.toInt(), 0xFFFFD54F.toInt(),
-    0xFFA1887F.toInt(), 0xFFBDBDBD.toInt()
-)
-
+// Read-only list: creating and editing happen in the category editor screen,
+// so rows never change or move while the user is configuring them.
 @Composable
 fun CategoriesScreen(
     categories: List<Category>,
+    // Category just created/edited in the editor: the list scrolls to it (if
+    // it isn't already fully visible) and briefly highlights it.
+    highlightCategoryId: Long?,
+    onHighlightConsumed: () -> Unit,
     onHomeClick: () -> Unit,
-    onAddCategory: (Category) -> Unit,
-    onRenameCategory: (Category, String) -> Unit,
-    onRecolorCategory: (Category, Int) -> Unit,
-    onReemojiCategory: (Category, String) -> Unit,
+    onAddClick: () -> Unit,
+    onEditCategory: (Category) -> Unit,
     onDeleteCategory: (Category) -> Unit
 ) {
-    var editingNameId by remember { mutableStateOf<Long?>(null) }
-    var editingEmojiId by remember { mutableStateOf<Long?>(null) }
-    var colorPickerTargetId by remember { mutableStateOf<Long?>(null) }
     var deleteTargetId by remember { mutableStateOf<Long?>(null) }
-    var showDuplicateNewCategoryDialog by remember { mutableStateOf(false) }
     var deleteModeActive by remember { mutableStateOf(false) }
+    var highlightedId by remember { mutableStateOf<Long?>(null) }
 
-    fun requestAddNewCategory() {
-        if (categories.any { it.name == NewCategoryDefaultName }) {
-            showDuplicateNewCategoryDialog = true
-            return
+    val sortedCategories = remember(categories) { sortCategories(categories) }
+    val listState = rememberLazyListState()
+
+    // Runs again when the list changes, so a category that was just saved is
+    // found as soon as it reaches the list.
+    LaunchedEffect(highlightCategoryId, sortedCategories) {
+        val targetId = highlightCategoryId ?: return@LaunchedEffect
+        val index = sortedCategories.indexOfFirst { it.id == targetId }
+        if (index < 0) return@LaunchedEffect
+
+        if (!listState.isItemFullyVisible(index)) {
+            // Keeps a couple of rows above for context.
+            listState.animateScrollToItem((index - 2).coerceAtLeast(0))
         }
+        highlightedId = targetId
+        onHighlightConsumed()
+    }
 
-        onAddCategory(
-            Category(
-                name = NewCategoryDefaultName,
-                color = NewCategoryDefaultColor,
-                emoji = NewCategoryDefaultEmoji
-            )
-        )
+    // One animation for the whole screen, drawn only on the highlighted row.
+    val highlightAlpha = remember { Animatable(0f) }
+    LaunchedEffect(highlightedId) {
+        if (highlightedId != null) {
+            highlightAlpha.snapTo(0f)
+            highlightAlpha.animateTo(1f, tween(300))
+            delay(1000)
+            highlightAlpha.animateTo(0f, tween(400))
+            highlightedId = null
+        }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppTheme.colors.background)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = TopBarButtonPadding),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onHomeClick) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Back to Dashboard",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { deleteModeActive = !deleteModeActive }) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Toggle delete mode",
-                        tint = if (deleteModeActive) DeleteModeActiveColor else SecondaryTextColor,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
-
-                IconButton(onClick = { requestAddNewCategory() }) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add category",
-                        tint = SecondaryTextColor,
-                        modifier = Modifier.size(25.dp)
-                    )
-                }
-            }
+        ScreenTopBar(title = "categories", nav = TopBarNav.Home, onNavClick = onHomeClick) {
+            TopBarIconButton(
+                Icons.Default.Delete,
+                "Toggle delete mode",
+                { deleteModeActive = !deleteModeActive },
+                tint = if (deleteModeActive) AppTheme.colors.expense else AppTheme.colors.secondaryText
+            )
+            TopBarIconButton(Icons.Default.Add, "Add category", onAddClick)
         }
 
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         CategoriesTableHeader()
 
         Spacer(modifier = Modifier.height(4.dp))
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                end = 20.dp,
+                top = 8.dp,
+                bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            )
         ) {
-            items(
-                items = categories.sortedByDescending { it.name == NewCategoryDefaultName },
-                key = { it.id }
-            ) { category ->
+            items(items = sortedCategories, key = { it.id }) { category ->
                 CategoryRow(
                     category = category,
-                    isEditingName = editingNameId == category.id,
-                    isEditingEmoji = editingEmojiId == category.id,
+                    highlightAlpha = if (highlightedId == category.id) highlightAlpha else null,
                     deleteModeActive = deleteModeActive,
-                    onNameClick = {
+                    onClick = {
                         if (deleteModeActive) {
-                            deleteTargetId = category.id
+                            // Default can't be deleted, so it does nothing here.
+                            if (!category.isDefault) deleteTargetId = category.id
                         } else {
-                            editingNameId = category.id
-                        }
-                    },
-                    onNameCommit = { newName ->
-                        onRenameCategory(category, newName)
-                        editingNameId = null
-                    },
-                    onEmojiClick = {
-                        if (deleteModeActive) {
-                            deleteTargetId = category.id
-                        } else {
-                            editingEmojiId = category.id
-                        }
-                    },
-                    onEmojiCommit = { newEmoji ->
-                        onReemojiCategory(category, newEmoji)
-                        editingEmojiId = null
-                    },
-                    onColorClick = {
-                        if (deleteModeActive) {
-                            deleteTargetId = category.id
-                        } else {
-                            colorPickerTargetId = category.id
+                            onEditCategory(category)
                         }
                     }
                 )
@@ -170,24 +130,12 @@ fun CategoriesScreen(
         }
     }
 
-    colorPickerTargetId?.let { targetId ->
-        val target = categories.first { it.id == targetId }
-
-        AlertDialog(
-            onDismissRequest = { colorPickerTargetId = null },
-            confirmButton = {},
-            title = { Text("Choose a color") },
-            text = {
-                ColorPickerGrid { pickedColor ->
-                    onRecolorCategory(target, pickedColor)
-                    colorPickerTargetId = null
-                }
-            }
-        )
-    }
-
     deleteTargetId?.let { targetId ->
-        val target = categories.first { it.id == targetId }
+        val target = categories.firstOrNull { it.id == targetId }
+        if (target == null) {
+            deleteTargetId = null
+            return@let
+        }
 
         AlertDialog(
             onDismissRequest = { deleteTargetId = null },
@@ -211,27 +159,12 @@ fun CategoriesScreen(
             }
         )
     }
+}
 
-    if (showDuplicateNewCategoryDialog) {
-        AlertDialog(
-            onDismissRequest = { showDuplicateNewCategoryDialog = false },
-            title = { Text("Unedited category found") },
-            text = {
-                Text(
-                    "You already have a \"New Category\" — please rename it before adding another one."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDuplicateNewCategoryDialog = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            }
-        )
-    }
+private fun LazyListState.isItemFullyVisible(index: Int): Boolean {
+    val info = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return false
+    return info.offset >= layoutInfo.viewportStartOffset &&
+        info.offset + info.size <= layoutInfo.viewportEndOffset
 }
 
 @Composable
@@ -244,14 +177,14 @@ private fun CategoriesTableHeader() {
     ) {
         Text(
             text = "Name",
-            color = SecondaryTextColor,
+            color = AppTheme.colors.secondaryText,
             fontSize = 16.sp,
             modifier = Modifier.weight(1f)
         )
 
         Text(
             text = "Color",
-            color = SecondaryTextColor,
+            color = AppTheme.colors.secondaryText,
             fontSize = 16.sp,
             modifier = Modifier.width(60.dp),
             textAlign = TextAlign.Center
@@ -259,7 +192,7 @@ private fun CategoriesTableHeader() {
 
         Text(
             text = "Emoji",
-            color = SecondaryTextColor,
+            color = AppTheme.colors.secondaryText,
             fontSize = 16.sp,
             modifier = Modifier.width(50.dp),
             textAlign = TextAlign.Center
@@ -273,73 +206,57 @@ private fun CategoriesTableHeader() {
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .height(1.dp)
-            .background(BorderColor)
+            .background(AppTheme.colors.border)
     )
 }
 
 @Composable
 private fun CategoryRow(
     category: Category,
-    isEditingName: Boolean,
-    isEditingEmoji: Boolean,
+    highlightAlpha: Animatable<Float, *>?,
     deleteModeActive: Boolean,
-    onNameClick: () -> Unit,
-    onNameCommit: (String) -> Unit,
-    onEmojiClick: () -> Unit,
-    onEmojiCommit: (String) -> Unit,
-    onColorClick: () -> Unit
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (highlightAlpha != null) {
+                    Modifier.drawBehind {
+                        drawRoundRect(
+                            color = Color(category.color).copy(alpha = 0.2f * highlightAlpha.value),
+                            cornerRadius = CornerRadius(10.dp.toPx())
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.weight(1f)) {
-            if (isEditingName) {
-                var text by remember(category.id) {
-                    mutableStateOf(category.name)
-                }
-
-                val focusRequester = remember { FocusRequester() }
-
-                LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
-                }
-
-                BasicTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        fontSize = 17.sp,
-                        color = Color.Black
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            onNameCommit(text)
-                        }
-                    ),
-                    modifier = Modifier
-                        .focusRequester(focusRequester)
-                        .fillMaxWidth()
-                )
-            } else {
+            // Default is a regular category except that it can't be deleted,
+            // so in delete mode it is greyed out with a hint instead of red.
+            val locked = deleteModeActive && category.isDefault
+            Column {
                 Text(
                     text = category.name.lowercase(),
-                    color = if (deleteModeActive) {
-                        DeleteModeActiveColor
-                    } else {
-                        Color.Black
+                    color = when {
+                        locked -> AppTheme.colors.secondaryText
+                        deleteModeActive -> AppTheme.colors.expense
+                        else -> AppTheme.colors.primaryText
                     },
-                    fontSize = 17.sp,
-                    modifier = Modifier.clickable {
-                        onNameClick()
-                    }
+                    fontSize = 17.sp
                 )
+                if (locked) {
+                    Text(
+                        text = "can't be deleted",
+                        color = AppTheme.colors.secondaryText,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
 
@@ -351,12 +268,7 @@ private fun CategoryRow(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        Color(category.color).copy(alpha = 0.25f)
-                    )
-                    .clickable {
-                        onColorClick()
-                    }
+                    .background(Color(category.color).copy(alpha = 0.25f))
             )
         }
 
@@ -364,83 +276,17 @@ private fun CategoryRow(
             modifier = Modifier.width(50.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (isEditingEmoji) {
-                var text by remember(category.id) {
-                    mutableStateOf(category.emoji)
-                }
-
-                val focusRequester = remember { FocusRequester() }
-
-                LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
-                }
-
-                BasicTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        fontSize = 18.sp,
-                        color = Color.Black,
-                        textAlign = TextAlign.Center
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            onEmojiCommit(text)
-                        }
-                    ),
-                    modifier = Modifier
-                        .focusRequester(focusRequester)
-                        .width(40.dp)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            Color(category.color).copy(alpha = 0.25f)
-                        )
-                        .clickable {
-                            onEmojiClick()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = category.emoji,
-                        fontSize = 18.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ColorPickerGrid(
-    onColorPicked: (Int) -> Unit
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        ColorPalette.chunked(5).forEach { rowColors ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(category.color).copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center
             ) {
-                rowColors.forEach { colorInt ->
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(colorInt))
-                            .clickable {
-                                onColorPicked(colorInt)
-                            }
-                    )
-                }
+                Text(
+                    text = category.emoji,
+                    fontSize = 18.sp
+                )
             }
         }
     }
