@@ -3,7 +3,7 @@
 BerryFlow is a simple personal expense-tracking app for Android, built as
 a learning project in Kotlin and Jetpack Compose. It tracks a single
 overall balance in euros, with categorized income/expense transactions,
-recurring transactions, and basic spending insights.
+recurring transactions, and spending totals per period.
 
 This is a personal project, not published on the Play Store. It's shared
 here for anyone who wants to look at the code, learn from it, or install
@@ -11,11 +11,15 @@ it manually.
 
 ## Features
 
-- Track income and expenses, grouped by day
-- Custom categories with colors and emojis
+- Track income and expenses, grouped by day, week, month, or year
+- Custom categories with colors and emojis, edited in a dedicated screen;
+  a built-in Default category (editable, never deletable) receives the
+  transactions of any deleted category
+- Tap a transaction's category square to filter the Dashboard by that category
+- Within each period, transactions are sorted by amount (largest first)
 - Recurring transactions (weekly, monthly, quarterly, semi-annual, yearly)
-- Spending insights grouped by week, month, or year
-- Manual balance adjustment
+- Manual balance adjustment; tap the balance on the Dashboard to hide or show it
+- Light and dark theme, chosen from the menu
 - Import/export all data as a JSON backup file
 
 ## Tech stack
@@ -35,17 +39,19 @@ No backend, no accounts: all data lives locally on the device.
 app/src/main/java/com/omismone/berryflow/
 ├── data/            Room entities, DAOs, repository, seed data
 ├── ui/
-│   ├── theme/       Fonts, colors, shared dimensions
+│   ├── theme/       Fonts, semantic colors (light/dark), shared top bar
 │   ├── navigation/  Navigation graph (BerryFlowNavHost)
-│   ├── dashboard/   Home screen
+│   ├── dashboard/   Home screen (transactions and totals per period)
 │   ├── add/         Add/edit transaction screen
 │   ├── categories/  Manage categories screen
 │   ├── adjustbalance/
 │   ├── recurrentevents/
-│   ├── insights/
 │   └── data/        Import/export/erase screen
 └── MainActivity.kt
 ```
+
+User preferences (theme, hidden balance) are stored separately from the
+database, in `data/AppPreferences.kt`.
 
 Each `ui/<screen>` package generally contains the screen's Composable and
 its ViewModel.
