@@ -1,5 +1,9 @@
 package com.omismone.berryflow.ui.recurrentevents
 
+import com.omismone.berryflow.ui.theme.AppTheme
+import com.omismone.berryflow.ui.theme.ScreenTopBar
+import com.omismone.berryflow.ui.theme.TopBarIconButton
+import com.omismone.berryflow.ui.theme.TopBarNav
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,13 +12,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,18 +32,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
 import com.omismone.berryflow.data.Frequency
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.TextStyle as JavaTextStyle
 import java.util.Locale
 
-private val SecondaryTextColor = Color(0xFF9E9E9E)
-private val BorderColor = Color(0xFFE0E0E0)
-private val IncomeColor = Color(0xFF43A047)
-private val ExpenseColor = Color(0xFFE53935)
-private val KeyBackgroundColor = Color(0xFFECECEC)
-private val OkKeyBackgroundColor = Color(0xFF424242)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,47 +109,22 @@ fun RecurrentEventsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppTheme.colors.background)
+            .navigationBarsPadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = TopBarButtonPadding),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        ScreenTopBar(
+            title = if (isEditMode) "edit recurrent event" else "new recurrent event",
+            nav = TopBarNav.Back,
+            onNavClick = onDiscardClick,
+            navContentDescription = "Discard and go back"
         ) {
-            IconButton(onClick = onDiscardClick) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Discard and go back",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
+            if (isEditMode) {
+                TopBarIconButton(Icons.Default.Delete, "Delete recurrent event", { showDeleteConfirm = true })
             }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isEditMode) {
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete recurrent event",
-                            tint = SecondaryTextColor,
-                            modifier = Modifier.size(23.dp)
-                        )
-                    }
-                }
-                IconButton(onClick = { onOkPress() }) {
-                    Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowRight,
-                        contentDescription = "Save",
-                        tint = SecondaryTextColor,
-                        modifier = Modifier.size(25.dp)
-                    )
-                }
-            }
+            TopBarIconButton(Icons.Default.Save, "Save", { onOkPress() })
         }
 
-        Spacer(modifier = Modifier.height(70.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -161,13 +133,13 @@ fun RecurrentEventsScreen(
         ) {
             Text(
                 text = "€",
-                color = SecondaryTextColor,
+                color = AppTheme.colors.secondaryText,
                 fontSize = 28.sp,
                 modifier = Modifier.padding(end = 18.dp)
             )
             Text(
                 text = displayAmount,
-                color = Color.Black,
+                color = AppTheme.colors.primaryText,
                 fontSize = 50.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -176,9 +148,9 @@ fun RecurrentEventsScreen(
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Backspace,
+                    imageVector = Icons.AutoMirrored.Filled.Backspace,
                     contentDescription = "Backspace",
-                    tint = SecondaryTextColor,
+                    tint = AppTheme.colors.secondaryText,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -191,7 +163,7 @@ fun RecurrentEventsScreen(
                 .fillMaxWidth(0.5f)
                 .align(Alignment.CenterHorizontally)
                 .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
+                .border(1.dp, AppTheme.colors.border, RoundedCornerShape(12.dp))
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -199,7 +171,7 @@ fun RecurrentEventsScreen(
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = null,
-                    tint = SecondaryTextColor,
+                    tint = AppTheme.colors.secondaryText,
                     modifier = Modifier
                         .size(18.dp)
                         .align(Alignment.CenterStart)
@@ -207,7 +179,7 @@ fun RecurrentEventsScreen(
                 if (transactionName.isEmpty()) {
                     Text(
                         text = selectedCategory.name.lowercase(),
-                        color = SecondaryTextColor,
+                        color = AppTheme.colors.secondaryText,
                         fontSize = 14.sp,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -219,7 +191,7 @@ fun RecurrentEventsScreen(
                     singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(
                         fontSize = 14.sp,
-                        color = Color.Black,
+                        color = AppTheme.colors.primaryText,
                         textAlign = TextAlign.Center
                     ),
                     modifier = Modifier.fillMaxWidth()
@@ -360,7 +332,7 @@ fun RecurrentEventsScreen(
 
 @Composable
 private fun TypeToggleButton(isIncome: Boolean, onToggle: () -> Unit) {
-    val color = if (isIncome) IncomeColor else ExpenseColor
+    val color = if (isIncome) AppTheme.colors.income else AppTheme.colors.expense
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -381,7 +353,7 @@ private fun DateButton(date: LocalDate, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+            .border(1.dp, AppTheme.colors.border, RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -389,15 +361,15 @@ private fun DateButton(date: LocalDate, onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Default.DateRange,
             contentDescription = null,
-            tint = SecondaryTextColor,
+            tint = AppTheme.colors.secondaryText,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Text(text = formatDateLabel(date) + " ", color = SecondaryTextColor, fontSize = 14.sp)
+        Text(text = formatDateLabel(date) + " ", color = AppTheme.colors.secondaryText, fontSize = 14.sp)
         Icon(
             imageVector = Icons.Default.KeyboardArrowDown,
             contentDescription = null,
-            tint = SecondaryTextColor,
+            tint = AppTheme.colors.secondaryText,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -408,7 +380,7 @@ private fun FrequencyButton(frequency: Frequency, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+            .border(1.dp, AppTheme.colors.border, RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -416,15 +388,15 @@ private fun FrequencyButton(frequency: Frequency, onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Default.DateRange,
             contentDescription = null,
-            tint = SecondaryTextColor,
+            tint = AppTheme.colors.secondaryText,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Text(text = frequency.label + " ", color = SecondaryTextColor, fontSize = 14.sp)
+        Text(text = frequency.label + " ", color = AppTheme.colors.secondaryText, fontSize = 14.sp)
         Icon(
             imageVector = Icons.Default.KeyboardArrowDown,
             contentDescription = null,
-            tint = SecondaryTextColor,
+            tint = AppTheme.colors.secondaryText,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -442,12 +414,12 @@ private fun CategoryButton(category: Category, onClick: () -> Unit) {
     ) {
         Text(text = category.emoji, fontSize = 16.sp)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = category.name.lowercase(), color = Color.Black, fontSize = 15.sp)
+        Text(text = category.name.lowercase(), color = AppTheme.colors.primaryText, fontSize = 15.sp)
         Spacer(modifier = Modifier.width(12.dp))
         Icon(
             imageVector = Icons.Default.KeyboardArrowDown,
             contentDescription = null,
-            tint = Color.Black,
+            tint = AppTheme.colors.primaryText,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -488,12 +460,12 @@ private fun NumericKeypad(
                     .weight(1f)
                     .height(64.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(OkKeyBackgroundColor)
+                    .background(AppTheme.colors.okKey)
                     .clickable { onOkPress() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowRight,
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "OK",
                     tint = Color.White
                 )
@@ -517,11 +489,11 @@ private fun KeypadKey(label: String, modifier: Modifier = Modifier, onClick: () 
         modifier = modifier
             .height(64.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(KeyBackgroundColor)
+            .background(AppTheme.colors.keyBackground)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(text = label, fontSize = 24.sp, color = Color.Black)
+        Text(text = label, fontSize = 24.sp, color = AppTheme.colors.primaryText)
     }
 }
 

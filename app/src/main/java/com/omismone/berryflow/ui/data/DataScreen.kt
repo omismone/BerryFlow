@@ -1,5 +1,8 @@
 package com.omismone.berryflow.ui.data
 
+import com.omismone.berryflow.ui.theme.AppTheme
+import com.omismone.berryflow.ui.theme.ScreenTopBar
+import com.omismone.berryflow.ui.theme.TopBarNav
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,11 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -21,11 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 
-private val SecondaryTextColor = Color(0xFF9E9E9E)
-private val NeutralButtonColor = Color(0xFFECECEC)
-private val DangerColor = Color(0xFFE53935)
 
 private enum class DataAction { IMPORT, EXPORT, ERASE }
 private enum class DialogStage { CONFIRM, SUCCESS, ERROR }
@@ -61,33 +57,18 @@ fun DataScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppTheme.colors.background)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = TopBarButtonPadding, end = 12.dp)
-        ) {
-            IconButton(
-                onClick = onHomeClick,
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Back to Dashboard",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
-            }
-        }
+        ScreenTopBar(title = "manage data", nav = TopBarNav.Home, onNavClick = onHomeClick)
 
-        Spacer(modifier = Modifier.height(70.dp))
-
+        // The button group is centered on the whole screen, not just in the
+        // space below the title.
         Column(
             modifier = Modifier
+                .align(Alignment.Center)
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
         ) {
@@ -190,11 +171,11 @@ private fun DataActionButton(label: String, onClick: () -> Unit, danger: Boolean
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (danger) DangerColor else NeutralButtonColor)
+            .background(if (danger) AppTheme.colors.danger else AppTheme.colors.keyBackground)
             .clickable { onClick() }
             .padding(vertical = 18.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = label, fontSize = 16.sp, color = if (danger) Color.White else Color.Black)
+        Text(text = label, fontSize = 16.sp, color = if (danger) Color.White else AppTheme.colors.primaryText)
     }
 }

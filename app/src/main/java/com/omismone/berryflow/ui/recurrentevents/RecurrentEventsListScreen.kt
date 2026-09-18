@@ -1,5 +1,9 @@
 package com.omismone.berryflow.ui.recurrentevents
 
+import com.omismone.berryflow.ui.theme.AppTheme
+import com.omismone.berryflow.ui.theme.ScreenTopBar
+import com.omismone.berryflow.ui.theme.TopBarIconButton
+import com.omismone.berryflow.ui.theme.TopBarNav
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,12 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.omismone.berryflow.data.Category
 import com.omismone.berryflow.data.Frequency
 import com.omismone.berryflow.data.RecurrentEvent
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 import java.util.Locale
 
-private val SecondaryTextColor = Color(0xFF9E9E9E)
-private val BorderColor = Color(0xFFE0E0E0)
-private val DeleteModeActiveColor = Color(0xFFE53935)
 
 @Composable
 fun RecurrentEventsListScreen(
@@ -45,45 +45,19 @@ fun RecurrentEventsListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppTheme.colors.background)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = TopBarButtonPadding),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onHomeClick) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Back to Dashboard",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { deleteModeActive = !deleteModeActive }) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Toggle delete mode",
-                        tint = if (deleteModeActive) DeleteModeActiveColor else SecondaryTextColor,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
-                IconButton(onClick = onAddClick) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add recurrent event",
-                        tint = SecondaryTextColor,
-                        modifier = Modifier.size(25.dp)
-                    )
-                }
-            }
+        ScreenTopBar(title = "recurrent events", nav = TopBarNav.Home, onNavClick = onHomeClick) {
+            TopBarIconButton(
+                Icons.Default.Delete,
+                "Toggle delete mode",
+                { deleteModeActive = !deleteModeActive },
+                tint = if (deleteModeActive) AppTheme.colors.expense else AppTheme.colors.secondaryText
+            )
+            TopBarIconButton(Icons.Default.Add, "Add recurrent event", onAddClick)
         }
 
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (events.isEmpty()) {
             Box(
@@ -92,7 +66,7 @@ fun RecurrentEventsListScreen(
             ) {
                 Text(
                     text = "No recurrent events yet",
-                    color = SecondaryTextColor,
+                    color = AppTheme.colors.secondaryText,
                     fontSize = 16.sp
                 )
             }
@@ -103,10 +77,15 @@ fun RecurrentEventsListScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 8.dp,
+                    bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )
             ) {
                 items(events, key = { it.id }) { event ->
-                    val category = categoriesById[event.categoryId]
+                    val category = categoriesById[event.categoryId] ?: categories.firstOrNull { it.isDefault }
                     if (category != null) {
                         EventRow(
                             event = event,
@@ -155,13 +134,13 @@ private fun EventsTableHeader() {
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = "Name", color = SecondaryTextColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Text(text = "Name", color = AppTheme.colors.secondaryText, fontSize = 16.sp, modifier = Modifier.weight(1f))
         Text(
-            text = "Amount", color = SecondaryTextColor, fontSize = 16.sp,
+            text = "Amount", color = AppTheme.colors.secondaryText, fontSize = 16.sp,
             modifier = Modifier.width(90.dp), textAlign = TextAlign.Center
         )
         Text(
-            text = "Frequency", color = SecondaryTextColor, fontSize = 16.sp,
+            text = "Frequency", color = AppTheme.colors.secondaryText, fontSize = 16.sp,
             modifier = Modifier.width(90.dp), textAlign = TextAlign.Center
         )
     }
@@ -171,7 +150,7 @@ private fun EventsTableHeader() {
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .height(1.dp)
-            .background(BorderColor)
+            .background(AppTheme.colors.border)
     )
 }
 
@@ -205,14 +184,14 @@ private fun EventRow(
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = event.name?.takeIf { it.isNotBlank() } ?: category.name.lowercase(),
-                color = if (deleteModeActive) DeleteModeActiveColor else Color.Black,
+                color = if (deleteModeActive) AppTheme.colors.expense else AppTheme.colors.primaryText,
                 fontSize = 17.sp
             )
         }
 
         Text(
             text = formatSignedAmount(event.amount, event.isIncome),
-            color = if (deleteModeActive) DeleteModeActiveColor else Color.Black,
+            color = if (deleteModeActive) AppTheme.colors.expense else AppTheme.colors.primaryText,
             fontSize = 15.sp,
             modifier = Modifier.width(90.dp),
             textAlign = TextAlign.Center
@@ -220,7 +199,7 @@ private fun EventRow(
 
         Text(
             text = Frequency.valueOf(event.frequency).label,
-            color = if (deleteModeActive) DeleteModeActiveColor else SecondaryTextColor,
+            color = if (deleteModeActive) AppTheme.colors.expense else AppTheme.colors.secondaryText,
             fontSize = 15.sp,
             modifier = Modifier.width(90.dp),
             textAlign = TextAlign.Center

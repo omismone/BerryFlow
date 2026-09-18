@@ -1,5 +1,9 @@
 package com.omismone.berryflow.ui.adjustbalance
 
+import com.omismone.berryflow.ui.theme.AppTheme
+import com.omismone.berryflow.ui.theme.ScreenTopBar
+import com.omismone.berryflow.ui.theme.TopBarIconButton
+import com.omismone.berryflow.ui.theme.TopBarNav
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -7,9 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,12 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.omismone.berryflow.ui.theme.TopBarButtonPadding
 import java.util.Locale
 
-private val SecondaryTextColor = Color(0xFF9E9E9E)
-private val KeyBackgroundColor = Color(0xFFECECEC)
-private val OkKeyBackgroundColor = Color(0xFF424242)
 
 @Composable
 fun AdjustBalanceScreen(
@@ -94,42 +93,23 @@ fun AdjustBalanceScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AppTheme.colors.background)
+            .navigationBarsPadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = TopBarButtonPadding),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        ScreenTopBar(
+            title = "adjust balance",
+            nav = if (isOnboarding) TopBarNav.None else TopBarNav.Back,
+            onNavClick = onDiscardClick,
+            navContentDescription = "Discard and go back"
         ) {
-            if (isOnboarding) {
-                Spacer(modifier = Modifier.size(48.dp)) // keeps Save aligned to the right
-            } else {
-                IconButton(onClick = onDiscardClick) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Discard and go back",
-                        tint = SecondaryTextColor,
-                        modifier = Modifier.size(25.dp)
-                    )
-                }
-            }
-            IconButton(onClick = { performSave() }) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = "Save",
-                    tint = SecondaryTextColor,
-                    modifier = Modifier.size(25.dp)
-                )
-            }
+            TopBarIconButton(Icons.Default.Save, "Save", { performSave() })
         }
 
         if (isOnboarding) {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "Welcome! Set your starting balance to get started.",
-                color = SecondaryTextColor,
+                color = AppTheme.colors.secondaryText,
                 fontSize = 16.sp,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -138,7 +118,7 @@ fun AdjustBalanceScreen(
             )
             Spacer(modifier = Modifier.height(46.dp))
         } else {
-            Spacer(modifier = Modifier.height(70.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
         Row(
@@ -148,13 +128,13 @@ fun AdjustBalanceScreen(
         ) {
             Text(
                 text = "€",
-                color = SecondaryTextColor,
+                color = AppTheme.colors.secondaryText,
                 fontSize = 28.sp,
                 modifier = Modifier.padding(end = 18.dp)
             )
             Text(
                 text = displayAmount,
-                color = Color.Black,
+                color = AppTheme.colors.primaryText,
                 fontSize = 50.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -163,9 +143,9 @@ fun AdjustBalanceScreen(
                 modifier = Modifier.padding(start = 12.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Backspace,
+                    imageVector = Icons.AutoMirrored.Filled.Backspace,
                     contentDescription = "Backspace",
-                    tint = SecondaryTextColor,
+                    tint = AppTheme.colors.secondaryText,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -218,12 +198,12 @@ private fun NumericKeypad(
                     .weight(1f)
                     .height(64.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(OkKeyBackgroundColor)
+                    .background(AppTheme.colors.okKey)
                     .clickable { onOkPress() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowRight,
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "OK",
                     tint = Color.White
                 )
@@ -247,11 +227,11 @@ private fun KeypadKey(label: String, modifier: Modifier = Modifier, onClick: () 
         modifier = modifier
             .height(64.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(KeyBackgroundColor)
+            .background(AppTheme.colors.keyBackground)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(text = label, fontSize = 24.sp, color = Color.Black)
+        Text(text = label, fontSize = 24.sp, color = AppTheme.colors.primaryText)
     }
 }
 
