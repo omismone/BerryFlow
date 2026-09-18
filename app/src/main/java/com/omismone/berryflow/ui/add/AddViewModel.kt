@@ -7,9 +7,7 @@ import com.omismone.berryflow.data.BerryFlowRepository
 import com.omismone.berryflow.data.Category
 import com.omismone.berryflow.data.Transaction
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 // transactionId == null -> creating a new transaction.
@@ -20,9 +18,6 @@ class AddViewModel(
 ) : ViewModel() {
 
     val isEditMode: Boolean = transactionId != null
-
-    val categories: StateFlow<List<Category>> = repository.userCategories
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _editingTransaction = MutableStateFlow<Transaction?>(null)
     val editingTransaction: StateFlow<Transaction?> = _editingTransaction
@@ -35,25 +30,28 @@ class AddViewModel(
         }
     }
 
-    fun saveTransaction(
+    // Persists the draft. Returns false (and writes nothing) if the amount
+    // isn't a positive, finite number. Suspends until the write is done, so
+    // the caller can close the screen knowing the data is stored.
+    suspend fun saveTransaction(
         amount: Double,
         name: String,
         isIncome: Boolean,
         category: Category,
         dateMillis: Long
-    ) {
-        viewModelScope.launch {
-            val transaction = Transaction(
-                id = transactionId ?: 0,
-                amount = amount,
-                isIncome = isIncome,
-                categoryId = category.id,
-                date = dateMillis,
-                name = name.trim().ifEmpty { null }
-            )
-            if (isEditMode) repository.updateTransaction(transaction)
-            else repository.addTransaction(transaction)
-        }
+    ): Boolean {
+        if (!amount.isFinite() || amount <= 0.0) return false
+        val transaction = Transaction(
+            id = transactionId ?: 0,
+            amount = amount,
+            isIncome = isIncome,
+            categoryId = category.id,
+            date = dateMillis,
+            name = name.trim().ifEmpty { null }
+        )
+        if (isEditMode) repository.updateTransaction(transaction)
+        else repository.addTransaction(transaction)
+        return true
     }
 
     fun deleteTransaction() {
